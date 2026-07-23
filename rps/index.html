@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rock · Paper · Scissors</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #6366f1;
+      --good: #22c55e;
+      --bad: #ef4444;
+      --tie: #eab308;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(circle at top, #1e293b, var(--bg));
+      color: var(--text);
+      padding: 1.5rem;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 25px 60px rgba(0,0,0,.45);
+      text-align: center;
+    }
+    h1 { margin: 0 0 .25rem; font-size: 1.6rem; letter-spacing: .5px; }
+    .subtitle { color: var(--muted); margin: 0 0 1.5rem; font-size: .95rem; }
+
+    .scoreboard {
+      display: flex;
+      justify-content: space-around;
+      background: #0f172a;
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .score-block .label { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; }
+    .score-block .value { font-size: 2rem; font-weight: 700; }
+    #playerScore { color: var(--good); }
+    #cpuScore { color: var(--bad); }
+
+    .arena {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      font-size: 3.5rem;
+      margin: .5rem 0 1.25rem;
+      min-height: 4rem;
+    }
+    .arena .vs { font-size: 1rem; color: var(--muted); font-weight: 700; }
+    .hand { transition: transform .15s ease; }
+
+    .result { font-size: 1.2rem; font-weight: 700; min-height: 1.6rem; margin-bottom: 1.5rem; }
+    .result.win { color: var(--good); }
+    .result.lose { color: var(--bad); }
+    .result.tie { color: var(--tie); }
+
+    .choices { display: flex; gap: .75rem; justify-content: center; }
+    .choice {
+      flex: 1;
+      font-size: 2rem;
+      padding: 1rem 0;
+      border: 2px solid #334155;
+      border-radius: 16px;
+      background: #0f172a;
+      color: var(--text);
+      cursor: pointer;
+      transition: transform .05s ease, border-color .2s ease, background .2s ease;
+    }
+    .choice:hover { border-color: var(--accent); background: #172033; }
+    .choice:active { transform: scale(.94); }
+    .choice .name { display: block; font-size: .75rem; color: var(--muted); margin-top: .35rem; }
+
+    .reset {
+      margin-top: 1.5rem;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: .85rem;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .reset:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Rock · Paper · Scissors</h1>
+    <p class="subtitle">First to feel like a winner wins. Pick your move.</p>
+
+    <div class="scoreboard">
+      <div class="score-block">
+        <div class="label">You</div>
+        <div class="value" id="playerScore">0</div>
+      </div>
+      <div class="score-block">
+        <div class="label">CPU</div>
+        <div class="value" id="cpuScore">0</div>
+      </div>
+    </div>
+
+    <div class="arena">
+      <span class="hand" id="playerHand">✊</span>
+      <span class="vs">VS</span>
+      <span class="hand" id="cpuHand">✊</span>
+    </div>
+
+    <div class="result" id="result" role="status" aria-live="polite">Make your move!</div>
+
+    <div class="choices">
+      <button class="choice" data-choice="rock">✊<span class="name">Rock</span></button>
+      <button class="choice" data-choice="paper">✋<span class="name">Paper</span></button>
+      <button class="choice" data-choice="scissors">✌️<span class="name">Scissors</span></button>
+    </div>
+
+    <button class="reset" id="reset">Reset score</button>
+  </main>
+
+  <script>
+    const EMOJI = { rock: "✊", paper: "✋", scissors: "✌️" };
+    const BEATS  = { rock: "scissors", paper: "rock", scissors: "paper" };
+    const CHOICES = ["rock", "paper", "scissors"];
+
+    let playerScore = 0;
+    let cpuScore = 0;
+
+    const playerHand = document.getElementById("playerHand");
+    const cpuHand = document.getElementById("cpuHand");
+    const resultEl = document.getElementById("result");
+    const playerScoreEl = document.getElementById("playerScore");
+    const cpuScoreEl = document.getElementById("cpuScore");
+
+    function play(playerChoice) {
+      const cpuChoice = CHOICES[Math.floor(Math.random() * 3)];
+
+      playerHand.textContent = EMOJI[playerChoice];
+      cpuHand.textContent = EMOJI[cpuChoice];
+
+      // little pop animation
+      [playerHand, cpuHand].forEach(h => {
+        h.style.transform = "scale(1.25)";
+        setTimeout(() => (h.style.transform = "scale(1)"), 150);
+      });
+
+      let outcome, cls;
+      if (playerChoice === cpuChoice) {
+        outcome = "Tie! You both chose " + playerChoice + ".";
+        cls = "tie";
+      } else if (BEATS[playerChoice] === cpuChoice) {
+        outcome = "You win! " + cap(playerChoice) + " beats " + cpuChoice + ".";
+        cls = "win";
+        playerScore++;
+      } else {
+        outcome = "You lose! " + cap(cpuChoice) + " beats " + playerChoice + ".";
+        cls = "lose";
+        cpuScore++;
+      }
+
+      resultEl.textContent = outcome;
+      resultEl.className = "result " + cls;
+      playerScoreEl.textContent = playerScore;
+      cpuScoreEl.textContent = cpuScore;
+    }
+
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    document.querySelectorAll(".choice").forEach(btn => {
+      btn.addEventListener("click", () => play(btn.dataset.choice));
+    });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      playerScore = 0;
+      cpuScore = 0;
+      playerScoreEl.textContent = "0";
+      cpuScoreEl.textContent = "0";
+      playerHand.textContent = "✊";
+      cpuHand.textContent = "✊";
+      resultEl.textContent = "Make your move!";
+      resultEl.className = "result";
+    });
+  </script>
+</body>
+</html>
