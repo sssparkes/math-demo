@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quick Math</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #6366f1;
+      --good: #22c55e;
+      --bad: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 1.5rem;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.4);
+      text-align: center;
+    }
+    h1 { margin: 0 0 .25rem; font-size: 1.1rem; color: var(--muted); font-weight: 500; }
+    .problem { font-size: 3rem; font-weight: 700; margin: 1rem 0 1.5rem; letter-spacing: 2px; }
+    input {
+      width: 100%;
+      font-size: 1.5rem;
+      text-align: center;
+      padding: .75rem;
+      border-radius: 12px;
+      border: 2px solid #334155;
+      background: #0f172a;
+      color: var(--text);
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    button {
+      margin-top: 1rem;
+      width: 100%;
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: .85rem;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      transition: transform .05s ease, background .2s ease;
+    }
+    button:hover { background: #4f46e5; }
+    button:active { transform: scale(.98); }
+    .result { margin-top: 1.25rem; font-size: 1.15rem; font-weight: 600; min-height: 1.5rem; }
+    .result.good { color: var(--good); }
+    .result.bad { color: var(--bad); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Solve the problem</h1>
+    <div class="problem">4 + 4 = ?</div>
+    <input id="answer" type="number" inputmode="numeric" placeholder="Your answer" autofocus />
+    <button id="check">Check my answer</button>
+    <div id="result" class="result" role="status" aria-live="polite"></div>
+  </main>
+
+  <script>
+    const ANSWER = 8;
+    const input = document.getElementById("answer");
+    const result = document.getElementById("result");
+
+    function check() {
+      const raw = input.value.trim();
+      if (raw === "") {
+        result.textContent = "Type a number first 🙂";
+        result.className = "result";
+        return;
+      }
+      if (Number(raw) === ANSWER) {
+        result.textContent = "✅ Correct! 4 + 4 = 8";
+        result.className = "result good";
+      } else {
+        result.textContent = "❌ Not quite — try again!";
+        result.className = "result bad";
+      }
+    }
+
+    document.getElementById("check").addEventListener("click", check);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") check(); });
+  </script>
+</body>
+</html>
