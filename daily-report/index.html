@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Go Mini's · Daily Report Generator</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --ink: #1a2330;
+      --muted: #667085;
+      --line: #e3e8ef;
+      --accent: #1f8a4c;
+      --accent-dark: #166b3a;
+      --accent-soft: #e8f5ee;
+      --field: #fbfcfd;
+      --shadow: 0 10px 30px rgba(16,32,24,.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1613;
+        --card: #17201c;
+        --ink: #eef2ef;
+        --muted: #9aa8a0;
+        --line: #263530;
+        --accent: #35c06f;
+        --accent-dark: #2aa25c;
+        --accent-soft: #16281f;
+        --field: #111a16;
+        --shadow: 0 10px 30px rgba(0,0,0,.35);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px 64px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { width: 100%; max-width: 640px; }
+
+    header.brand {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 18px;
+    }
+    .logo {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: var(--accent); color: #fff;
+      display: grid; place-items: center;
+      font-weight: 800; font-size: 15px; letter-spacing: .5px;
+      box-shadow: var(--shadow);
+    }
+    .brand h1 { font-size: 18px; margin: 0; font-weight: 750; }
+    .brand p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .progress {
+      height: 6px; background: var(--line);
+    }
+    .progress > span {
+      display: block; height: 100%;
+      background: var(--accent);
+      transition: width .25s ease;
+    }
+
+    .body { padding: 26px 24px 8px; }
+    .step-count { font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
+    h2.q { font-size: 21px; margin: 0 0 6px; font-weight: 720; }
+    p.hint { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
+
+    label.fld { display: block; margin-bottom: 16px; }
+    label.fld .lab { display: block; font-size: 13.5px; font-weight: 650; margin-bottom: 6px; }
+    label.fld .sub { font-weight: 400; color: var(--muted); }
+    input[type=text], input[type=number], input[type=date], textarea, select {
+      width: 100%;
+      font: inherit;
+      color: var(--ink);
+      background: var(--field);
+      border: 1.5px solid var(--line);
+      border-radius: 11px;
+      padding: 11px 13px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > label.fld { flex: 1 1 140px; margin-bottom: 16px; }
+
+    .note {
+      background: var(--accent-soft);
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 10px 13px;
+      font-size: 13.5px;
+      color: var(--ink);
+      margin-bottom: 16px;
+    }
+    .err { color: #d4342c; font-size: 13px; margin: -8px 0 14px; min-height: 0; }
+
+    .foot {
+      display: flex; gap: 10px; justify-content: space-between;
+      padding: 8px 24px 22px;
+    }
+    .foot .right { display: flex; gap: 10px; margin-left: auto; }
+    button {
+      font: inherit; font-weight: 650;
+      border-radius: 11px; padding: 11px 20px;
+      border: 1.5px solid transparent; cursor: pointer;
+      transition: transform .05s, background .15s, border-color .15s;
+    }
+    button:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-dark); }
+    .btn-ghost { background: transparent; color: var(--muted); border-color: var(--line); }
+    .btn-ghost:hover { color: var(--ink); border-color: var(--muted); }
+
+    /* Report view */
+    .report-head { display:flex; align-items:center; gap:8px; margin: 0 0 14px; }
+    .report-head .check { width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:15px; }
+    .report-head h2 { margin:0; font-size:20px; }
+    pre.report {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--field);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 18px;
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink);
+      max-height: 46vh; overflow: auto;
+      margin: 0 0 18px;
+    }
+    .report-actions { display:flex; gap:10px; flex-wrap:wrap; padding: 0 24px 22px; }
+    .report-actions button { flex: 1 1 auto; }
+    .toast {
+      position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+      background: var(--ink); color: var(--bg);
+      padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 600;
+      opacity: 0; pointer-events: none; transition: .25s;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    footer.tiny { text-align:center; color: var(--muted); font-size: 12px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="brand">
+      <div class="logo">GO</div>
+      <div>
+        <h1>Go Mini's — Daily Report Generator</h1>
+        <p>Answer a few questions, then copy the finished report into Outlook.</p>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="progress"><span id="bar" style="width:0%"></span></div>
+      <div class="body" id="body"></div>
+      <div class="foot" id="foot"></div>
+    </div>
+
+    <footer class="tiny">Runs entirely in your browser. Nothing is uploaded or saved anywhere.</footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- config ----------
+  // Paste your deployed Apps Script Web App URL (ends in /exec) between the quotes:
+  const EMAIL_ENDPOINT = "https://script.google.com/macros/s/AKfycbzlrL3XyVxyXwRsEBJoPx6yJk3AbP5KI27dK79y327N3M6Mku-7BjagBxSFnUNmwHpVFA/exec";
+  const RECIPIENT = "spencer.parkes@gominis.com";
+  const SHARED_SECRET = "gominis-daily-report"; // must match the value in apps-script.gs
+
+  // ---------- state ----------
+  const data = {
+    date: todayISO(),
+    visitCount: null,
+    visits: [],          // { place, highlight }
+    extraHighlights: "",
+    des: null,
+    hoursDrive: null,
+    hoursSales: null,
+    hoursOther: null,
+    totalWorked: null,
+    overtimeReason: "",
+    deliveries: null,
+    driveDetail: "",
+    salesDetail: "",
+    otherDetail: "",
+    callsMade: null,
+    voicemails: null,
+    conversations: null,
+    apptCalls: null,
+    initiatives: ""
+  };
+
+  let idx = 0;
+  let submitState = "review";
+  let lastErr = "";
+  const body = document.getElementById("body");
+  const foot = document.getElementById("foot");
+  const bar  = document.getElementById("bar");
+
+  // ---------- helpers ----------
+  function todayISO() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
+  function prettyDate(iso) {
+    if (!iso) return "";
+    const parts = iso.split("-").map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return iso;
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+  }
+  const num = v => (v === null || v === undefined || v === "" ? null : Number(v));
+  function plural(n, one, many) { return n === 1 ? one : (many || one + "s"); }
+
+  // ---------- step definitions ----------
+  // Each step: { key, count, hint, body(), collect(returns error string|null) }
+  function buildSteps() {
+    const s = [];
+
+    s.push({
+      key: "date",
+      title: "What date is this report for?",
+      hint: "Defaults to today. Change it if you're writing up a previous day.",
+      body: () => `<label class="fld"><span class="lab">Report date</span>
+        <input type="date" id="f_date" value="${esc(data.date)}"></label>`,
+      collect: () => {
+        data.date = document.getElementById("f_date").value || todayISO();
+        return data.date ? null : "Please pick a date.";
+      }
+    });
+
+    s.push({
+      key: "visitCount",
+      title: "How many in-person visits did you make today?",
+      hint: "We'll ask about each place one at a time next.",
+      body: () => `<label class="fld"><span class="lab">Number of in-person visits</span>
+        <input type="number" min="0" step="1" id="f_vc" value="${data.visitCount ?? ""}" autofocus></label>`,
+      collect: () => {
+        const n = num(document.getElementById("f_vc").value);
+        if (n === null || n < 0 || !Number.isInteger(n)) return "Enter a whole number (0 or more).";
+        data.visitCount = n;
+        // resize visits array, preserving what's there
+        while (data.visits.length < n) data.visits.push({ place: "", highlight: "" });
+        data.visits.length = n;
+        return null;
+      }
+    });
+
+    for (let i = 0; i < (data.visitCount || 0); i++) {
+      const v = data.visits[i] || (data.visits[i] = { place: "", highlight: "" });
+      s.push({
+        key: "visit_" + i,
+        title: `In-person visit ${i + 1} of ${data.visitCount}`,
+        hint: "Where did you go? Add a highlight if anything notable happened.",
+        body: () => `
+          <label class="fld"><span class="lab">Place / business name</span>
+            <input type="text" id="f_place" value="${esc(v.place)}" placeholder="e.g. Acme Self Storage" autofocus></label>
+          <label class="fld"><span class="lab">Highlight for this visit <span class="sub">(optional)</span></span>
+            <textarea id="f_hl" placeholder="Leave blank if none — e.g. Spoke with the owner about a 20ft unit.">${esc(v.highlight)}</textarea></label>`,
+        collect: () => {
+          v.place = document.getElementById("f_place").value.trim();
+          v.highlight = document.getElementById("f_hl").value.trim();
+          return v.place ? null : "Please enter the place you visited.";
+        }
+      });
+    }
+
+    s.push({
+      key: "extraHighlights",
+      title: "Any highlights you'd like to add that weren't already covered?",
+      hint: "Optional. One highlight per line. These get their own section in the report.",
+      body: () => `<label class="fld"><span class="lab">Additional highlights <span class="sub">(optional)</span></span>
+        <textarea id="f_eh" placeholder="One per line. Leave blank if none.">${esc(data.extraHighlights)}</textarea></label>`,
+      collect: () => { data.extraHighlights = document.getElementById("f_eh").value.trim(); return null; }
+    });
+
+    s.push({
+      key: "des",
+      title: "How many DEs went out today in the Waco / Temple / Killeen area?",
+      hint: "",
+      body: () => `<label class="fld"><span class="lab">DEs out today (Waco / Temple / Killeen)</span>
+        <input type="number" min="0" step="1" id="f_des" value="${data.des ?? ""}" autofocus></label>`,
+      collect: () => {
+        const n = num(document.getElementById("f_des").value);
+        if (n === null || n < 0 || !Number.isInteger(n)) return "Enter a whole number (0 or more).";
+        data.des = n; return null;
+      }
+    });
+
+    s.push({
+      key: "hours",
+      title: "How did your hours break down today?",
+      hint: "Total hours in each category. Decimals are fine (e.g. 1.5).",
+      body: () => `<div class="row">
+        <label class="fld"><span class="lab">Driver tasks</span>
+          <input type="number" min="0" step="0.25" id="f_hd" value="${data.hoursDrive ?? ""}" autofocus></label>
+        <label class="fld"><span class="lab">Sales / marketing</span>
+          <input type="number" min="0" step="0.25" id="f_hs" value="${data.hoursSales ?? ""}"></label>
+        <label class="fld"><span class="lab">Other (non-sales/mktg)</span>
+          <input type="number" min="0" step="0.25" id="f_ho" value="${data.hoursOther ?? ""}"></label>
+      </div>`,
+      collect: () => {
+        const hd = num(document.getElementById("f_hd").value);
+        const hs = num(document.getElementById("f_hs").value);
+        const ho = num(document.getElementById("f_ho").value);
+        for (const x of [hd, hs, ho]) if (x === null || x < 0) return "Enter hours (0 or more) in all three fields.";
+        data.hoursDrive = hd; data.hoursSales = hs; data.hoursOther = ho;
+        return null;
+      }
+    });
+
+    s.push({
+      key: "totalWorked",
+      title: "How many total hours did the driver work today?",
+      hint: "Total time on the clock for the day, start to finish.",
+      body: () => `<label class="fld"><span class="lab">Total hours worked</span>
+        <input type="number" min="0" step="0.25" id="f_tw" value="${data.totalWorked ?? ""}" autofocus></label>`,
+      collect: () => {
+        const n = num(document.getElementById("f_tw").value);
+        if (n === null || n < 0) return "Enter total hours worked (0 or more).";
+        data.totalWorked = n;
+        if (n <= 8) data.overtimeReason = "";
+        return null;
+      }
+    });
+
+    if ((data.totalWorked || 0) > 8) {
+      s.push({
+        key: "overtime",
+        title: "That's more than 8 hours — please provide the reason.",
+        hint: `Total hours worked: ${fmtHrs(data.totalWorked)}. A reason is required for anything over 8.`,
+        body: () => `<label class="fld"><span class="lab">Reason for working longer than 8 hours</span>
+          <textarea id="f_ot" placeholder="Briefly explain why the day ran past 8 hours." autofocus>${esc(data.overtimeReason)}</textarea></label>`,
+        collect: () => {
+          const v = document.getElementById("f_ot").value.trim();
+          if (!v) return "A reason is required when total hours worked exceed 8.";
+          data.overtimeReason = v;
+          return null;
+        }
+      });
+    }
+
+    if ((data.hoursDrive || 0) > 0) {
+      s.push({
+        key: "driveDetail",
+        title: "Tell us about your driving / deliveries.",
+        hint: `You logged ${fmtHrs(data.hoursDrive)} of driver tasks.`,
+        body: () => `
+          <label class="fld"><span class="lab">Deliveries completed</span>
+            <input type="number" min="0" step="1" id="f_deliv" value="${data.deliveries ?? ""}" autofocus></label>
+          <label class="fld"><span class="lab">Any additional detail <span class="sub">(optional)</span></span>
+            <textarea id="f_dd" placeholder="e.g. 2 drop-offs, 1 pickup, plus a relocation.">${esc(data.driveDetail)}</textarea></label>`,
+        collect: () => {
+          const n = num(document.getElementById("f_deliv").value);
+          if (n === null || n < 0 || !Number.isInteger(n)) return "Enter the number of deliveries (0 or more).";
+          data.deliveries = n;
+          data.driveDetail = document.getElementById("f_dd").value.trim();
+          return null;
+        }
+      });
+    }
+
+    if ((data.hoursSales || 0) > 0) {
+      s.push({
+        key: "salesDetail",
+        title: "What did your sales / marketing time involve?",
+        hint: `You logged ${fmtHrs(data.hoursSales)} of sales / marketing.`,
+        body: () => `<label class="fld"><span class="lab">Sales / marketing detail</span>
+          <textarea id="f_sd" placeholder="What you worked on." autofocus>${esc(data.salesDetail)}</textarea></label>`,
+        collect: () => { data.salesDetail = document.getElementById("f_sd").value.trim(); return null; }
+      });
+    }
+
+    if ((data.hoursOther || 0) > 0) {
+      s.push({
+        key: "otherDetail",
+        title: "What did your other tasks involve?",
+        hint: `You logged ${fmtHrs(data.hoursOther)} of non-sales/marketing work.`,
+        body: () => `<label class="fld"><span class="lab">Other tasks detail</span>
+          <textarea id="f_od" placeholder="What these tasks were." autofocus>${esc(data.otherDetail)}</textarea></label>`,
+        collect: () => { data.otherDetail = document.getElementById("f_od").value.trim(); return null; }
+      });
+    }
+
+    s.push({
+      key: "phone",
+      title: "Phone activity for the day.",
+      hint: "Whole numbers. In-person sales visits carry over from earlier.",
+      body: () => `
+        <div class="note">In-person sales visits: <strong>${data.visitCount ?? 0}</strong> (carried over — included in the report automatically)</div>
+        <div class="row">
+          <label class="fld"><span class="lab">Phone calls made</span>
+            <input type="number" min="0" step="1" id="f_cm" value="${data.callsMade ?? ""}" autofocus></label>
+          <label class="fld"><span class="lab">Voicemails left</span>
+            <input type="number" min="0" step="1" id="f_vm" value="${data.voicemails ?? ""}"></label>
+        </div>
+        <div class="row">
+          <label class="fld"><span class="lab">Phone conversations</span>
+            <input type="number" min="0" step="1" id="f_pc" value="${data.conversations ?? ""}"></label>
+          <label class="fld"><span class="lab">Calls → appointment / decision-maker</span>
+            <input type="number" min="0" step="1" id="f_ap" value="${data.apptCalls ?? ""}"></label>
+        </div>`,
+      collect: () => {
+        const cm = num(document.getElementById("f_cm").value);
+        const vm = num(document.getElementById("f_vm").value);
+        const pc = num(document.getElementById("f_pc").value);
+        const ap = num(document.getElementById("f_ap").value);
+        for (const x of [cm, vm, pc, ap]) if (x === null || x < 0 || !Number.isInteger(x)) return "Enter a whole number (0 or more) in each field.";
+        data.callsMade = cm; data.voicemails = vm; data.conversations = pc; data.apptCalls = ap;
+        return null;
+      }
+    });
+
+    s.push({
+      key: "initiatives",
+      title: "Any upcoming initiatives?",
+      hint: "Optional. One per line — things planned or in progress for the days ahead.",
+      body: () => `<label class="fld"><span class="lab">Upcoming initiatives <span class="sub">(optional)</span></span>
+        <textarea id="f_init" placeholder="One per line. Leave blank if none.">${esc(data.initiatives)}</textarea></label>`,
+      collect: () => { data.initiatives = document.getElementById("f_init").value.trim(); return null; }
+    });
+
+    s.push({ key: "report", title: "__REPORT__" });
+    return s;
+  }
+
+  function fmtHrs(h) {
+    const n = Number(h);
+    return n + " " + plural(n, "hr", "hrs");
+  }
+
+  // ---------- report builder ----------
+  function bullets(text) {
+    return text.split("\n").map(l => l.trim()).filter(Boolean);
+  }
+
+  function buildReport() {
+    const L = [];
+    L.push("Daily Report for " + prettyDate(data.date));
+    L.push("");
+
+    L.push("SUMMARY");
+    L.push("- In-person sales visits: " + (data.visitCount ?? 0));
+    L.push("- DEs out today (Waco / Temple / Killeen): " + (data.des ?? 0));
+    L.push("- Hours — Driving: " + data.hoursDrive + " | Sales & Marketing: " + data.hoursSales + " | Other: " + data.hoursOther);
+    L.push("- Total hours worked: " + data.totalWorked);
+    if ((data.totalWorked || 0) > 8 && data.overtimeReason) L.push("- Reason for working over 8 hours: " + data.overtimeReason);
+    L.push("");
+
+    L.push("IN-PERSON VISITS");
+    if (!data.visitCount) {
+      L.push("- No in-person visits today.");
+    } else {
+      data.visits.forEach((v, i) => {
+        L.push((i + 1) + ". " + (v.place || "(unnamed)"));
+        if (v.highlight) v.highlight.split("\n").map(x => x.trim()).filter(Boolean).forEach(h => L.push("   - " + h));
+      });
+    }
+    L.push("");
+
+    const extra = bullets(data.extraHighlights);
+    if (extra.length) {
+      L.push("ADDITIONAL HIGHLIGHTS");
+      extra.forEach(h => L.push("- " + h));
+      L.push("");
+    }
+
+    L.push("DELIVERIES / DRIVING (" + fmtHrs(data.hoursDrive) + ")");
+    if ((data.hoursDrive || 0) <= 0) {
+      L.push("- No deliveries completed.");
+    } else {
+      L.push("- Deliveries completed: " + (data.deliveries ?? 0));
+      if (data.driveDetail) bullets(data.driveDetail).forEach(d => L.push("- " + d));
+    }
+    L.push("");
+
+    L.push("SALES & MARKETING (" + fmtHrs(data.hoursSales) + ")");
+    if ((data.hoursSales || 0) <= 0) L.push("- No sales or marketing hours logged.");
+    else if (data.salesDetail) bullets(data.salesDetail).forEach(d => L.push("- " + d));
+    else L.push("- (No detail provided.)");
+    L.push("");
+
+    L.push("OTHER TASKS (" + fmtHrs(data.hoursOther) + ")");
+    if ((data.hoursOther || 0) <= 0) L.push("- No other tasks logged.");
+    else if (data.otherDetail) bullets(data.otherDetail).forEach(d => L.push("- " + d));
+    else L.push("- (No detail provided.)");
+    L.push("");
+
+    L.push("PHONE ACTIVITY");
+    L.push("- Phone calls made: " + (data.callsMade ?? 0));
+    L.push("- Voicemails left: " + (data.voicemails ?? 0));
+    L.push("- Phone conversations: " + (data.conversations ?? 0));
+    L.push("- In-person sales visits: " + (data.visitCount ?? 0));
+    L.push("- Calls leading to appointments / decision-maker conversations: " + (data.apptCalls ?? 0));
+    L.push("");
+
+    L.push("UPCOMING INITIATIVES");
+    const init = bullets(data.initiatives);
+    if (init.length) init.forEach(x => L.push("- " + x));
+    else L.push("- None noted.");
+
+    return L.join("\n");
+  }
+
+  // ---------- render ----------
+  function render() {
+    const steps = buildSteps();
+    if (idx < 0) idx = 0;
+    if (idx > steps.length - 1) idx = steps.length - 1;
+    const step = steps[idx];
+
+    if (step.title === "__REPORT__") { renderReport(steps.length); return; }
+
+    const total = steps.length - 1; // exclude report step from the count
+    bar.style.width = Math.round(((idx) / total) * 100) + "%";
+
+    body.innerHTML = `
+      <p class="step-count">Step ${idx + 1} of ${total}</p>
+      <h2 class="q">${esc(step.title)}</h2>
+      ${step.hint ? `<p class="hint">${esc(step.hint)}</p>` : ""}
+      ${step.body()}
+      <p class="err" id="err"></p>`;
+
+    foot.innerHTML = `
+      <button class="btn-ghost" id="back" ${idx === 0 ? "disabled style='opacity:.4;cursor:default'" : ""}>Back</button>
+      <div class="right"><button class="btn-primary" id="next">${idx === total - 1 ? "Generate report" : "Next"}</button></div>`;
+
+    document.getElementById("next").onclick = goNext;
+    document.getElementById("back").onclick = goBack;
+
+    // focus first field
+    const first = body.querySelector("input, textarea, select");
+    if (first) first.focus();
+
+    // Enter to advance (except in textareas)
+    body.querySelectorAll("input").forEach(el => {
+      el.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); goNext(); } });
+    });
+
+    function goNext() {
+      const err = step.collect();
+      const errEl = document.getElementById("err");
+      if (err) { if (errEl) errEl.textContent = err; return; }
+      idx++; render();
+    }
+    function goBack() {
+      try { step.collect(); } catch (e) {}
+      idx--; render();
+    }
+  }
+
+  function renderReport(nSteps) {
+    bar.style.width = "100%";
+    const text = buildReport();
+    foot.innerHTML = "";
+
+    let actions = document.getElementById("reportActions");
+    if (!actions) {
+      actions = document.createElement("div");
+      actions.className = "report-actions";
+      actions.id = "reportActions";
+      body.parentNode.insertBefore(actions, foot);
+    }
+
+    function paint() {
+      if (submitState === "sending") return paintSending();
+      if (submitState === "sent") return paintSent();
+      if (submitState === "error") return paintError();
+      return paintReview();
+    }
+
+    // Before submitting: no preview, no copy — just a submit gate.
+    function paintReview() {
+      const ot = (data.totalWorked || 0) > 8 ? " · overtime noted" : "";
+      body.innerHTML = `
+        <div class="report-head"><span class="check">📄</span><h2>Ready to submit</h2></div>
+        <p class="hint">Submitting emails your completed report to <strong>${esc(RECIPIENT)}</strong> from your Gmail. You'll be able to review and copy it right after it sends.</p>
+        <div class="note">Report for <strong>${esc(prettyDate(data.date))}</strong> · ${data.visitCount ?? 0} in-person visit(s) · ${data.totalWorked ?? 0} hrs worked${ot}.</div>`;
+      actions.innerHTML = `
+        <button class="btn-primary" id="submit">Submit &amp; send report</button>
+        <button class="btn-ghost" id="edit">Back to edit</button>`;
+      document.getElementById("submit").onclick = doSubmit;
+      document.getElementById("edit").onclick = goEdit;
+    }
+
+    function paintSending() {
+      body.innerHTML = `
+        <div class="report-head"><span class="check">…</span><h2>Sending…</h2></div>
+        <p class="hint">Emailing your report to ${esc(RECIPIENT)}. One moment.</p>`;
+      actions.innerHTML = `<button class="btn-ghost" disabled style="opacity:.6;cursor:default">Sending…</button>`;
+    }
+
+    function paintSent() {
+      body.innerHTML = `
+        <div class="report-head"><span class="check">✓</span><h2>Report sent</h2></div>
+        <p class="hint">Emailed to <strong>${esc(RECIPIENT)}</strong>. Here's a copy you can paste anywhere.</p>
+        <pre class="report" id="reportText">${esc(text)}</pre>`;
+      actions.innerHTML = `
+        <button class="btn-primary" id="copy">Copy to clipboard</button>
+        <button class="btn-ghost" id="dl">Download .txt</button>
+        <button class="btn-ghost" id="reset">Start over</button>`;
+      document.getElementById("copy").onclick = () => copyText(text);
+      document.getElementById("dl").onclick = () => downloadText(text);
+      document.getElementById("reset").onclick = doReset;
+    }
+
+    function paintError() {
+      body.innerHTML = `
+        <div class="report-head"><span class="check" style="background:#d4342c">!</span><h2>Couldn't send the email</h2></div>
+        <p class="hint">${esc(lastErr || "Something went wrong.")} You can retry, or copy the report and send it manually.</p>
+        <pre class="report" id="reportText">${esc(text)}</pre>`;
+      actions.innerHTML = `
+        <button class="btn-primary" id="retry">Retry send</button>
+        <button class="btn-ghost" id="copy">Copy report</button>
+        <button class="btn-ghost" id="dl">Download .txt</button>
+        <button class="btn-ghost" id="edit">Back to edit</button>`;
+      document.getElementById("retry").onclick = doSubmit;
+      document.getElementById("copy").onclick = () => copyText(text);
+      document.getElementById("dl").onclick = () => downloadText(text);
+      document.getElementById("edit").onclick = goEdit;
+    }
+
+    async function doSubmit() {
+      submitState = "sending"; paint();
+      try {
+        await sendEmail(text);
+        submitState = "sent"; paint();
+        toast("Report sent to " + RECIPIENT);
+      } catch (e) {
+        lastErr = e.message || String(e);
+        submitState = "error"; paint();
+      }
+    }
+    function goEdit() { submitState = "review"; actions.remove(); idx = nSteps - 2; render(); }
+    function doReset() { if (confirm("Clear everything and start a new report?")) location.reload(); }
+
+    paint();
+  }
+
+  async function sendEmail(text) {
+    if (!EMAIL_ENDPOINT) {
+      throw new Error("No email endpoint is set yet. Paste your Apps Script Web App URL into EMAIL_ENDPOINT near the top of index.html.");
+    }
+    const subject = "Daily Report — " + prettyDate(data.date);
+    const payload = JSON.stringify({ secret: SHARED_SECRET, subject: subject, body: text });
+    // Apps Script web apps don't return CORS headers, so we fire with mode:"no-cors":
+    // the request is delivered and the email sends, but the response is opaque (unreadable).
+    await fetch(EMAIL_ENDPOINT, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: payload
+    });
+    return true;
+  }
+
+  // ---------- actions ----------
+  function copyText(text) {
+    const done = () => toast("Copied! Paste into Outlook.");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else fallbackCopy(text, done);
+  }
+  function fallbackCopy(text, done) {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { toast("Copy failed — select the text manually."); }
+    document.body.removeChild(ta);
+  }
+  function downloadText(text) {
+    const blob = new Blob([text], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "go-minis-daily-report-" + data.date + ".txt";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast("Downloaded.");
+  }
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
